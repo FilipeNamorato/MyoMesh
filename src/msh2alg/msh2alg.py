@@ -48,7 +48,7 @@ def run_msh2alg(
         '-i', f"../{meshname}.vtu",
         '--dx', str(dx), '--dy', str(dy), '--dz', str(dz),
         '-r', '1000',
-        '-c', './src/msh2alg/conf.ini',
+        '-c', '../src/msh2alg/conf.ini',
         '-o', f"../{meshname}.alg"
     ], cwd='./hexa-mesh-from-VTK/')
 
