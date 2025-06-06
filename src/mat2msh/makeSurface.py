@@ -238,7 +238,6 @@ def parse_arguments():
     return parser.parse_args()
 
 if __name__ == "__main__":
-
     args = parse_arguments()
     filename_input = args.input_file
     cover_both = args.cover_both_ends

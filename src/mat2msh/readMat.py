@@ -9,19 +9,19 @@ def readMat(mat_filename, RVyes=False, output_dir="."):
     print("Data structure loaded successfully.")
 
     def get_coordinates(field):
-        print(f"Extracting coordinates for: {field}")
+        #print(f"Extracting coordinates for: {field}")
         coords = getattr(setstruct, field, None)
         if coords is None:
             raise ValueError(f"Field {field} not found.")
         if len(coords.shape) == 2:
             coords = coords[:, np.newaxis, :]
-        print(f"Coordinates for {field} extracted with shape: {coords.shape}")
+        #print(f"Coordinates for {field} extracted with shape: {coords.shape}")
         return coords
 
     # Get values of SliceThickness and SliceGap
     slice_thickness = getattr(setstruct, 'SliceThickness', 8)
     slice_gap = getattr(setstruct, 'SliceGap', 0.64)  # Default if not present
-    print(f"slice_gap = {slice_gap}")
+    #print(f"slice_gap = {slice_gap}")
 
     if slice_thickness is None:
         raise ValueError("Field 'SliceThickness' not found in the .mat file")
@@ -60,9 +60,9 @@ def readMat(mat_filename, RVyes=False, output_dir="."):
         return barycenters
 
     def align_slices(X, Y, barycenters, z_values):
-        """Align slices based on linear regression of barycenters."""
+        #Align slices based on linear regression of barycenters
         num_slices_here = X.shape[2]
-        print(f"Aligning {num_slices_here} slices...")
+        #print(f"Aligning {num_slices_here} slices...")
 
         z = z_values[0, :].reshape(-1, 1)  # shape (num_slices, 1)
 

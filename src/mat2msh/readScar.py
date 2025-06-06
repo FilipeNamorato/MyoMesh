@@ -7,9 +7,8 @@ from scipy.io import loadmat
 
 ROIEntry = namedtuple('ROIEntry', ['name', 'z', 'points'])
 
-################################
-# 1) Reading the .mat file and extracting ROIs
-################################
+
+# Reading the .mat file and extracting ROIs
 def readScar(mat_filename):
     """
     Reads the .mat file and returns a flat list of ROIEntry.
@@ -54,9 +53,8 @@ def readScar(mat_filename):
             entries.append(ROIEntry(name, z_val, pts))
     return entries
 
-################################
+
 # Grouping of ROIs by slice
-################################
 def group_by_slice(entries):
     """
     Receives a list of ROIEntry and returns:
@@ -67,9 +65,8 @@ def group_by_slice(entries):
         fatias[e.z][e.name].extend(e.points)
     return fatias
 
-################################
+
 # 2D visualization of the slices
-################################
 def plot_slices(fatias):
     """
     For verification, plots each slice showing:
@@ -93,9 +90,8 @@ def plot_slices(fatias):
         plt.tight_layout()
         plt.show()
 
-################################
+
 # Alignment and saving slices in .txt
-################################
 def save_fatias_to_txt(fatias, shifts_x_file, shifts_y_file, output_dir):
     """
     Applies X/Y shifts for each slice and saves in "slices/".
@@ -108,16 +104,15 @@ def save_fatias_to_txt(fatias, shifts_x_file, shifts_y_file, output_dir):
         # Selects the appropriate shift or zero if out of range
         sx = shifts_x[z] if 0 <= z < len(shifts_x) else 0
         sy = shifts_y[z] if 0 <= z < len(shifts_y) else 0
-        fname = os.path.join(output_dir, f"fatia_{z}.txt")
+        fname = os.path.join(output_dir, f"slice_{z}.txt")
         with open(fname, 'w') as f:
             for pts in roi_map.values():
                 for x, y in pts:
                     f.write(f"{x - sx} {y - sy} {z}\n")
         print(f"Saved slice {z} to {fname}")
 
-################################
+
 # Saves separated ROIs in .txt
-################################
 def save_rois_extruded_to_txt(fatias, mat_filename, output_dir, num_layers=1):
 
     data = loadmat(mat_filename)
@@ -149,9 +144,8 @@ def save_rois_extruded_to_txt(fatias, mat_filename, output_dir, num_layers=1):
                         f.write(f"{x_out:.6f} {y_out:.6f} {z_interp:.6f}\n")
             print(f"Saved extruded ROI '{roi_name}' (slice {z}) to: {fname}")
 
-################################
+
 # Generation of surfaces (.ply) and STL
-################################
 def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
     """
     For each file roi_<name>_z<z>.txt in rois_extruded/:
@@ -193,9 +187,8 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
         else:
             print(f"PLY file not found for {txt}, skipping STL conversion.")
 
-################################
+
 # MAIN: full execution
-################################
 def main():
     parser = argparse.ArgumentParser(description="Full scar pipeline")
     parser.add_argument('matfile', help='Path to .mat file')

@@ -18,7 +18,6 @@ def execute_commands(input_file):
     date_str = datetime.now().strftime("%Y%m%d_%H%M")
     output_dir = f"./output/{date_str}/{patient_id}"
     os.makedirs(output_dir, exist_ok=True)
-
     
     # Paths for surfaces and intermediate files
     stl_srf = f"{output_dir}/stlFiles"
@@ -125,10 +124,7 @@ def execute_commands(input_file):
             return
 
     # Final Processing
-    print("### Final Processing ###")
     print(f"STL files generated successfully in: {stl_srf}")
-    print("Ending the script before executing Gmsh and other steps.")
-
     print("===================================================")
     # Step 5: Generate the `.msh` file using Gmsh
 
@@ -154,7 +150,7 @@ def execute_commands(input_file):
             print(f"No 'Roi' data found in '{input_file}' or 'setstruct' is missing/empty.")
             flagScar = False
     except Exception as e:
-        print(f"Error checking ROI presence in '{input_file}': {e}")
+        print(f"No ROIs present in '{input_file}'")
         flagScar = False
     
     if flagScar:
