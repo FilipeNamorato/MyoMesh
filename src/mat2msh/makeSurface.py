@@ -5,6 +5,8 @@ import sys, os
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
 import argparse
+from scipy.spatial import Delaunay
+from matplotlib.path import Path
 
 def writeplyfile(writefile, tet_nodes, tet_tot):
     """
@@ -117,72 +119,86 @@ def cover_apex(nodes_renum, tris, patch, principal_axis=0):
 
     return nodes_covered, tris_covered
 
-def cover_both_ends_centered(nodes, tris, patch, principal_axis=2):
+def triangulate_flat_cap(points_2d, node_offset=0):
     """
-    Fecha ambas as extremidades triangulando radialmente
-    a partir do centróide, ordenando os índices globais para
-    evitar cruzamentos.
-    - `nodes`: (M×3) array dos nós originais
-    - `tris`: (K×3) conectividade entre fatias
-    - patch["width"] = número de pontos por fatia
-    - patch["height"] = número de fatias
-    Retorna (nodes_covered, tris_final)
+    Creates a 2D Delaunay triangulation from points on a plane (X, Y)
+    and filters the triangles to respect the polygon boundary.
+    This is crucial for non-convex contours, such as fibroses,
+    where pure Delaunay triangulation might create "invalid" triangles
+    that cross through the shape's interior.
+
+    Returns:
+    - numpy.ndarray: A (M, 3) array of valid triangle indices.
+                     Returns an empty array if there are no valid triangles.
+    """
+    if points_2d.shape[0] < 3:
+        return np.empty((0, 3), dtype=int)
+
+    # Realiza a triangulação Delaunay em 2D
+    tri = Delaunay(points_2d)
+    
+    # Since Delaunay creates the initial outline of the structure,
+    # Path acts as a "boundary detector" to check if the triangles
+    # lie inside the polygon defined by points_2d.
+    # This is important to avoid triangles extending beyond the contour.
+    # The last point must be the same as the first to close the contour
+    polygon_path = Path(points_2d)
+
+    valid_triangles = []
+    for simplex in tri.simplices:
+        # Get the triangle vertices
+        triangle_vertices = points_2d[simplex]
+        
+        # Compute the centroid of the triangle
+        triangle_centroid = np.mean(triangle_vertices, axis=0)
+        
+        # Check if the triangle's centroid is inside the original polygon
+        if polygon_path.contains_point(triangle_centroid):
+            valid_triangles.append(simplex)
+            
+    if not valid_triangles:
+        return np.empty((0, 3), dtype=int)
+
+    # Add the offset to the indices of valid triangles
+    return np.array(valid_triangles) + node_offset
+
+def cover_both_ends_with_caps(nodes, tris, patch, principal_axis=2):
+    """
+    Closes both ends by triangulating the caps radially from
+    the slice contours using 2D Delaunay.
+
+    - `nodes`: (Mx3) array of the original nodes
+    - `tris`: (Kx3) slice connectivity (lateral mesh)
+    - patch["width"]: number of points per slice
+    - patch["height"]: number of slices
+
+    Returns (nodes_final, tris_final)
     """
 
     n_in_strip = patch["width"]
     n_slices   = patch["height"]
-
-    # calcular índices globais das duas bordas
+    # Compute global indices of the two edges
     base_idx = np.arange(0, n_in_strip)
-    top_idx  = np.arange((n_slices-1)*n_in_strip,
-                         n_slices*n_in_strip)
+    top_idx  = np.arange((n_slices-1)*n_in_strip, n_slices*n_in_strip)
 
-    # extrair suas coordenadas
-    pts_base = nodes[base_idx]
-    pts_top  = nodes[top_idx]
+    # Extract 2D coordinates for the caps
+    pts_base_2d = nodes[base_idx, :2]  # Take only X and Y from the base
+    pts_top_2d  = nodes[top_idx, :2]   # Take only X and Y from the top
 
-    # centroids
-    cent_base = pts_base.mean(axis=0)
-    cent_top  = pts_top.mean(axis=0)
+    # Create triangles for the caps
+    base_cap_tris = triangulate_flat_cap(pts_base_2d, node_offset=base_idx[0])
+    top_cap_tris  = triangulate_flat_cap(pts_top_2d, node_offset=top_idx[0])
 
-    # novo array de nós: [cent_base, cent_top, nós_originais]
-    nodes_cov = np.vstack([
-        cent_base[np.newaxis,:],
-        cent_top[np.newaxis,:],
-        nodes
-    ])
+    # Concatenate: lower cap triangles + lateral triangles + upper cap triangles
+    all_tris = [tris]
+    if base_cap_tris.size > 0:
+        all_tris.append(base_cap_tris)
+    if top_cap_tris.size > 0:
+        all_tris.append(top_cap_tris)
 
-    # ajusta todos os índices de tris em +2
-    tris_shift = tris + 2
+    tris_final = np.vstack(all_tris)
 
-    # função helper que devolve fan de triângulos
-    def make_fan(cent_id, ring_idx):
-        # calcular ângulos e ordenar os índices globais do ring
-        rel = nodes[ring_idx] - nodes_cov[cent_id]
-        ang = np.arctan2(rel[:,1], rel[:,0])
-        order = ring_idx[np.argsort(ang)]
-        # gerar triângulos
-        fans = []
-        n = len(order)
-        for i in range(n):
-            a = order[i]   + 2  # +2 pelo deslocamento de nós_cov
-            b = order[(i+1)%n] + 2
-            fans.append([cent_id, a, b])
-        return np.array(fans, dtype=int)
-
-    # centroid global indices em nodes_cov
-    cent_base_id = 0
-    cent_top_id  = 1
-
-    # gera fans
-    tris_base = make_fan(cent_base_id, base_idx)
-    tris_top  = make_fan(cent_top_id,  top_idx)
-
-    # concatena: base fan + lateral + top fan
-    tris_final = np.vstack([tris_base, tris_shift, tris_top])
-
-    return nodes_cov, tris_final
-
+    return nodes, tris_final
 
 def replicate_single_slice_below(points, slice_thickness, principal_axis=2):
     """
@@ -213,16 +229,11 @@ def replicate_single_slice_below(points, slice_thickness, principal_axis=2):
 def parse_arguments():
     parser = argparse.ArgumentParser(description="Generate surface from points. Default: only one end is closed.")
 
-    parser.add_argument("input_file", 
-                        help="Text file with point coordinates (X Y Z).")
-    parser.add_argument("--cover-both-ends", action="store_true",
-                        help="Close both ends of the geometry instead of just one apex.")
-    parser.add_argument("--slice-thickness", type=float, default=2.0,
-                        help="Distance used if there's only one slice (default=2.0).")
-    parser.add_argument("--output_dir", default="./output/plyFiles",
-                        help="Directory to save the .ply file")
-    parser.add_argument("--patient_id", required=True,
-                        help="Patient ID for naming the .ply file")
+    parser.add_argument("input_file", help="Text file with point coordinates (X Y Z).")
+    parser.add_argument("--cover-both-ends", action="store_true", help="Close both ends of the geometry instead of just one apex.")
+    parser.add_argument("--slice-thickness", type=float, default=2.0, help="Distance used if there's only one slice (default=2.0).")
+    parser.add_argument("--output_dir", default="./output/plyFiles", help="Directory to save the .ply file")
+    parser.add_argument("--patient_id", required=True, help="Patient ID for naming the .ply file")
     
     return parser.parse_args()
 
@@ -236,11 +247,9 @@ if __name__ == "__main__":
         print(f"Error: File {filename_input} does not exist.")
         sys.exit(1)
 
-
     # Define output file path
     filename_base = os.path.splitext(os.path.basename(filename_input))[0]
     filename_output = os.path.join(args.output_dir, f"{filename_base}.ply")
-
 
     # Invert coordinates
     invert_z = False
@@ -308,8 +317,7 @@ if __name__ == "__main__":
     apex_last = None
 
     if cover_both:
-        nodes_final, tris_final = cover_both_ends_centered(points, tris, patch, principal_axis=principal_axis)
-
+        nodes_final, tris_final = cover_both_ends_with_caps(points, tris, patch, principal_axis=principal_axis)
     elif user_input["cover_apex"]:
         nodes_final, tris_final = cover_apex(points, tris, patch, principal_axis=principal_axis)
     else:
@@ -355,21 +363,3 @@ if __name__ == "__main__":
         ax.scatter(points[:, 0], points[:, 1], points[:, 2], c="r", label="Input Points")
         plt.legend()
         plt.show()
-def triangulate_ring_to_center(center, ring_points, offset=0):
-    """
-    Ordena os pontos da borda em torno do centro e gera triângulos ligando ao centro.
-    offset é o índice que será somado aos pontos (ex: para encaixar na lista geral)
-    """
-    # Translada pontos para o centro
-    rel_points = ring_points - center
-    angles = np.arctan2(rel_points[:, 1], rel_points[:, 0])
-    order = np.argsort(angles)
-
-    tris = []
-    n = len(ring_points)
-    for i in range(n):
-        i0 = order[i]
-        i1 = order[(i + 1) % n]
-        tris.append([0, i0 + offset, i1 + offset])  # centro é o 0 no sistema local
-
-    return np.array(tris)

@@ -4,6 +4,7 @@ import subprocess
 from src.mat2msh.readMat import readMat
 import argparse
 import shutil
+from scipy.io import loadmat
 
 def execute_commands(input_file):
    
@@ -143,30 +144,43 @@ def execute_commands(input_file):
     msh = f"{msh_srf}/{patient_id}.msh"
     out_log = f"{msh_srf}/{patient_id}.log"
 
-    
-    print("Extracting scars from the .mat file...")
-    print("===================================================")
-    # Step 6: Execute readScar.py
+    flagScar = False
     try:
-        aligned_mat_path = f"{output_dir}/aligned_patient.mat"
-        print(f"Aligned MAT file path: {aligned_mat_path}")
-        msh_path = f"{msh_srf}/{patient_id}.msh"
-        output_marked = f"{msh_srf}/{patient_id}_marked.msh"
+        data = loadmat(input_file, struct_as_record=False, squeeze_me=True)
+        # Checks if 'setstruct' and 'Roi' exist and if 'Roi' is not empty
+        if 'setstruct' in data and hasattr(data['setstruct'], 'Roi') and data['setstruct'].Roi.size > 0:
+            flagScar = True
+        else:
+            print(f"No 'Roi' data found in '{input_file}' or 'setstruct' is missing/empty.")
+            flagScar = False
+    except Exception as e:
+        print(f"Error checking ROI presence in '{input_file}': {e}")
+        flagScar = False
+    
+    if flagScar:
+        print("Extracting scars from the .mat file...")
+        print("===================================================")
+        # Step 6: Execute readScar.py
+        try:
+            aligned_mat_path = f"{output_dir}/aligned_patient.mat"
+            print(f"Aligned MAT file path: {aligned_mat_path}")
+            msh_path = f"{msh_srf}/{patient_id}.msh"
+            output_marked = f"{msh_srf}/{patient_id}_marked.msh"
 
-        read_scar_command = (
-            f"python3 ./src/mat2msh/readScar.py {input_file} "
-            f"--shiftx {output_dir}/endo_shifts_x.txt "
-            f"--shifty {output_dir}/endo_shifts_y.txt "
-            f"--output_path {output_dir} "
-            f"--patient_id {patient_id}"
-        )
+            read_scar_command = (
+                f"python3 ./src/mat2msh/readScar.py {input_file} "
+                f"--shiftx {output_dir}/endo_shifts_x.txt "
+                f"--shifty {output_dir}/endo_shifts_y.txt "
+                f"--output_path {output_dir} "
+                f"--patient_id {patient_id}"
+            )
 
-        subprocess.run(read_scar_command, shell=True, check=True)
-        print("Scar pipeline executed and fibrosis marked successfully.")
+            subprocess.run(read_scar_command, shell=True, check=True)
+            print("Scar pipeline executed and fibrosis marked successfully.")
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing readScar.py: {e}")
-        return
+        except subprocess.CalledProcessError as e:
+            print(f"Error executing readScar.py: {e}")
+            return
     
     print("===================================================")
     print("Generating the mesh with GMSH...")
@@ -179,28 +193,30 @@ def execute_commands(input_file):
     except Exception as e:
         print(f"Error generating model: {e}")
         return
-    print("")
-    print("===================================================")
-    print("Marking the mesh with the scar files...")
-    print("===================================================")
-    # Step 7: Execute mark_fibrosis_script.py
-    try:
-        msh_path = f"{msh_srf}/{patient_id}.msh"
-        output_marked = f"{msh_srf}/{patient_id}_marked.msh"
-        mark_scar_command = (
-            f"python3 ./src/mat2msh/markFibroseFromMsh.py "
-            f"--msh {msh_path} "
-            f"--stl_dir {scar_srf} "
-            f"--output_path {output_marked}"
-        )
-        subprocess.run(mark_scar_command, shell=True, check=True)
+    
+    if flagScar:
+        print("")
         print("===================================================")
-        print("Fibrosis successfully marked in the mesh.")
+        print("Marking the mesh with the scar files...")
         print("===================================================")
+        # Step 7: Execute mark_fibrosis_script.py
+        try:
+            msh_path = f"{msh_srf}/{patient_id}.msh"
+            output_marked = f"{msh_srf}/{patient_id}_marked.msh"
+            mark_scar_command = (
+                f"python3 ./src/mat2msh/markFibroseFromMsh.py "
+                f"--msh {msh_path} "
+                f"--stl_dir {scar_srf} "
+                f"--output_path {output_marked}"
+            )
+            subprocess.run(mark_scar_command, shell=True, check=True)
+            print("===================================================")
+            print("Fibrosis successfully marked in the mesh.")
+            print("===================================================")
 
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing mark_fibrosis_script.py: {e}")
-        return
+        except subprocess.CalledProcessError as e:
+            print(f"Error executing mark_fibrosis_script.py: {e}")
+            return
 
     print("===================================================")
     print("Converting msh to alg format...")
@@ -235,13 +251,6 @@ def execute_commands(input_file):
     os.remove("./endo_shifts_y.txt")
     os.remove("./epi_shifts_x.txt")
     os.remove("./epi_shifts_y.txt")
-   # os.remove("./cluster_dbscan")
-    #os.remove("./fibrosis_mapped.txt")
-    #os.remove("./fibrosis_original.txt")
-    
-    shutil.rmtree("./output/plyFiles")
-    shutil.rmtree("./output/scarFiles")
-    shutil.rmtree("./rois_extruded")
 
 # Main entry point
 if __name__ == "__main__":

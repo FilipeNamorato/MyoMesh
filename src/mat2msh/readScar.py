@@ -5,62 +5,61 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import loadmat
 
-# Estrutura simples para cada ROI em uma fatia: nome, índice Z e lista de pontos (x,y)
 ROIEntry = namedtuple('ROIEntry', ['name', 'z', 'points'])
 
 ################################
-# 1) Leitura do .mat e extração de ROIs
+# 1) Reading the .mat file and extracting ROIs
 ################################
 def readScar(mat_filename):
     """
-    Lê o arquivo .mat e retorna uma lista plana de ROIEntry.
-    Cada ROIEntry contém:
-      - name: nome da ROI (ex: "ROI-1")
-      - z: índice da fatia onde essa ROI foi anotada
-      - points: lista de tuplas (x,y) dos pontos da ROI
-
-    Explicação:
-    - "setstruct" é a estrutura MATLAB com metadados e ROIs.
-    - Extraímos de cada ROI seus arrays X, Y, Z e o nome para cada elemento.
-    - Para cada sub-fat ia (índice i), associamos o nome correto e empacotamos
-      os pontos convertidos em Python.
+    Reads the .mat file and returns a flat list of ROIEntry.
+    Each ROIEntry contains: (e.g., "ROI-1")
+      - name: ROI name (e.g., "ROI-1")
+      - z: slice index where the ROI was annotated
+      - points: list of (x,y) tuples for the ROI points
+    Explanation:
+    - "setstruct" is the MATLAB structure containing metadata and ROIs.
+    - For each ROI, X, Y, and Z arrays and names for each element are extracted.
+    - For each sub-slice (index i), the correct name is associated and the points
+      are packaged into Python.
     """
+
     print(f"Reading ROIs from: {mat_filename}")
     data = loadmat(mat_filename)
     rois = data['setstruct'][0][0]['Roi']
 
     entries = []
     for idx, roi in enumerate(rois):
-        # Extrai lista de nomes para cada sub-fat ia
+        # Extracts the list of names for each sub-slice
         raw_names = roi['Name'].flatten()
         slice_names = []
         for element in raw_names:
-            # Converte array numpy para string
+            # Converts numpy array to string
             if isinstance(element, np.ndarray):
                 val = element.flat[0]
             else:
                 val = element
             slice_names.append(str(val).strip())
-        # Arrays de coordenadas
+        # Coordinate arrays
         X = roi['X']; Y = roi['Y']; Z = roi['Z']
-        # Para cada sub-fatia, empacota um ROIEntry
+        # For each sub-slice, package an ROIEntry
         for i in range(len(Z)):
             z_val = int(np.atleast_1d(Z[i]).flat[0])
             x_arr = np.atleast_1d(X[i]).flatten()
             y_arr = np.atleast_1d(Y[i]).flatten()
             if x_arr.size == 0 or y_arr.size == 0:
-                continue  # sem pontos nesta sub-fatia
+                continue  # no points in this sub-slice
             name = slice_names[i] if i < len(slice_names) else slice_names[0]
             pts = list(zip(x_arr, y_arr))
             entries.append(ROIEntry(name, z_val, pts))
     return entries
 
 ################################
-# 2) Agrupamento de ROIs por fatia
+# Grouping of ROIs by slice
 ################################
 def group_by_slice(entries):
     """
-    Recebe lista de ROIEntry e retorna:
+    Receives a list of ROIEntry and returns:
       { z: { roi_name: [ (x,y), ... ], ... }, ... }
     """
     fatias = defaultdict(lambda: defaultdict(list))
@@ -69,13 +68,13 @@ def group_by_slice(entries):
     return fatias
 
 ################################
-# 3) Visualização 2D das fatias
+# 2D visualization of the slices
 ################################
 def plot_slices(fatias):
     """
-    Para conferência, plota cada fatia mostrando:
-      - Pontos de cada ROI coloridos
-      - Nome e centróide marcado
+    For verification, plots each slice showing:
+      - Points of each ROI in different colors
+      - Name and centroid marked
     """
     for z, roi_map in sorted(fatias.items()):
         plt.figure(figsize=(6,6))
@@ -95,18 +94,18 @@ def plot_slices(fatias):
         plt.show()
 
 ################################
-# 4) Alinhamento e gravação de fatias em .txt
+# Alignment and saving slices in .txt
 ################################
 def save_fatias_to_txt(fatias, shifts_x_file, shifts_y_file, output_dir):
     """
-    Aplica deslocamentos (shifts) em X/Y para cada fatia e salva em "fatias/".
-    Arquivos: fatia_<z>.txt contendo linhas "x_alinhado y_alinhado z".
+    Applies X/Y shifts for each slice and saves in "slices/".
+    Files: slice_<z>.txt containing lines "x_aligned y_aligned z".
     """
     os.makedirs(output_dir, exist_ok=True)
     shifts_x = np.loadtxt(shifts_x_file)
     shifts_y = np.loadtxt(shifts_y_file)
     for z, roi_map in sorted(fatias.items()):
-        # Seleciona shift adequado ou zero se fora do alcance
+        # Selects the appropriate shift or zero if out of range
         sx = shifts_x[z] if 0 <= z < len(shifts_x) else 0
         sy = shifts_y[z] if 0 <= z < len(shifts_y) else 0
         fname = os.path.join(output_dir, f"fatia_{z}.txt")
@@ -117,9 +116,8 @@ def save_fatias_to_txt(fatias, shifts_x_file, shifts_y_file, output_dir):
         print(f"Saved slice {z} to {fname}")
 
 ################################
- # 5) Salva ROIs separados em .txt
+# Saves separated ROIs in .txt
 ################################
-
 def save_rois_extruded_to_txt(fatias, mat_filename, output_dir, num_layers=1):
 
     data = loadmat(mat_filename)
@@ -140,10 +138,10 @@ def save_rois_extruded_to_txt(fatias, mat_filename, output_dir, num_layers=1):
                 z_base = z * dz
                 z_top  = z_base + dz
 
-                # Gera N camadas entre z_base e z_top
+                # Generates N layers between z_base and z_top
                 for layer in range(num_layers + 1):
-                    alpha = layer / num_layers #QTD de subfatias
-                    # Interpola entre z_base e z_top
+                    alpha = layer / num_layers
+                    # Interpolates between z_base and z_top
                     z_interp = z_base * (1 - alpha) + z_top * alpha
                     for x, y in points:
                         x_out = x * resolution_x
@@ -152,16 +150,15 @@ def save_rois_extruded_to_txt(fatias, mat_filename, output_dir, num_layers=1):
             print(f"Saved extruded ROI '{roi_name}' (slice {z}) to: {fname}")
 
 ################################
-# 6) Geração de superfícies (.ply) e STL
+# Generation of surfaces (.ply) and STL
 ################################
 def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
-    
     """
-    Para cada arquivo roi_<nome>_z<z>.txt em rois_extruded/:
-      1) chama makeSurface.py para gerar .ply
-      2) converte .ply em .stl usando PlyToStl
+    For each file roi_<name>_z<z>.txt in rois_extruded/:
+      1) calls makeSurface.py to generate .ply
+      2) converts .ply to .stl using PlyToStl
     """
-    # prepara diretórios de saída
+    # Prepares output directories
     os.makedirs(ply_dir, exist_ok=True)
     os.makedirs(stl_dir, exist_ok=True)
 
@@ -171,8 +168,7 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
         ply = os.path.join(ply_dir, f"{base}.ply")
         stl = os.path.join(stl_dir, f"{base}.stl")
 
-
-        # 1) gera o PLY com parâmetros obrigatórios
+        # 1) Generates the PLY with mandatory parameters
         surface_command = (
             f"python3 ./src/mat2msh/makeSurface.py {txt} "
             f"--output_dir {ply_dir} --patient_id {patient_id} --cover-both-ends"
@@ -183,13 +179,8 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
         except subprocess.CalledProcessError as e:
             print(f"Error generating PLY for {txt}: {e}")
             continue
-            
-            print(f"Surface for {txt} generated at {ply}")
-        except subprocess.CalledProcessError as e:
-            print(f"Error generating PLY for {txt}: {e}")
-            continue
 
-        # 2) converte PLY → STL
+        # 2) Converts PLY -> STL
         if os.path.exists(ply):
             try:
                 subprocess.run(
@@ -202,9 +193,8 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
         else:
             print(f"PLY file not found for {txt}, skipping STL conversion.")
 
-
 ################################
-# MAIN: execução completa
+# MAIN: full execution
 ################################
 def main():
     parser = argparse.ArgumentParser(description="Full scar pipeline")
@@ -212,23 +202,23 @@ def main():
     parser.add_argument('--shiftx', default='endo_shifts_x.txt')
     parser.add_argument('--shifty', default='endo_shifts_y.txt')
     parser.add_argument('--output_path', required=True,
-                    help='Base path to save output folders like fatias, rois_extruded, plyFiles, scarFiles')
+                    help='Base path to save output folders like slices, rois_extruded, plyFiles, scarFiles')
     parser.add_argument('--patient_id', required=True,
                     help='Patient identifier for naming and organization')
     args = parser.parse_args()
     
-    # 1-3: leitura, agrupamento e plot
+    # 1-3: reading, grouping, and plotting
     entries = readScar(args.matfile)
     slices = group_by_slice(entries)
     plot_slices(slices)
-    # 4: grava slices alinhadas
+    # 4: save aligned slices
     slices_dir = os.path.join(args.output_path, "slices")
     save_fatias_to_txt(slices, args.shiftx, args.shifty, slices_dir)
 
     print("===================================================")
     print("Construction extruded and saved slices scar files")
     print("===================================================")
-    # 5) Extrusão simples de cada ROI
+    # 5) Simple extrusion of each ROI
     rois_dir = os.path.join(args.output_path, "rois_extruded")
     print(f"Saving extruded ROIs to: {rois_dir}")
     
@@ -237,7 +227,7 @@ def main():
     print("Generate surfaces and STL files")
     print("===================================================")
 
-    # 6) Geração de superfícies e STL a partir das extrusões
+    # 6) Generation of surfaces and STL from the extrusions
     ply_dir = os.path.join(args.output_path, "scarPly")
     stl_dir = os.path.join(args.output_path, "scarSTL")
     generate_surfaces_and_stl(args.patient_id, rois_dir, ply_dir, stl_dir)
