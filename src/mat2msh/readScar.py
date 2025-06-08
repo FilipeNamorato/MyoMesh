@@ -164,7 +164,7 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
 
         # 1) Generates the PLY with mandatory parameters
         surface_command = (
-            f"python3 ./src/mat2msh/makeSurface.py {txt} "
+            f"python3 src/mat2msh/makeSurface.py {txt} "
             f"--output_dir {ply_dir} --patient_id {patient_id} --cover-both-ends"
         )
         try:
@@ -178,7 +178,7 @@ def generate_surfaces_and_stl(patient_id, rois_dir, ply_dir, stl_dir):
         if os.path.exists(ply):
             try:
                 subprocess.run(
-                    f"./convertPly2STL/build/PlyToStl {ply} {stl} 1",
+                    f"./convertPly2STL/build/bin/PlyToStl {ply} {stl} 1",
                     shell=True, check=True
                 )
                 print(f"STL created: {stl}")

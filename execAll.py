@@ -116,7 +116,7 @@ def execute_commands(input_file):
             print(f"Error: PLY file {ply_file} not found.")
             return
         try:
-            ply_to_stl_command = f"./convertPly2STL/build/PlyToStl {ply_file} {stl_output} 0"
+            ply_to_stl_command = f"./convertPly2STL/build/bin/PlyToStl {ply_file} {stl_output} 0"
             subprocess.run(ply_to_stl_command, shell=True, check=True)
             print(f"STL file generated successfully: {stl_output}")
         except subprocess.CalledProcessError as e:
@@ -221,22 +221,28 @@ def execute_commands(input_file):
     marked_msh_path = f"{msh_srf}/{patient_id}_marked.msh"
     mesh_output_base = f"{msh_srf}/{patient_id}"
 
-    command = [
-        "conda", "run", "-n", "fenicsproject", "env", "PYTHONPATH=.",
-        "python3", "./src/msh2alg/msh2alg.py",
-        "-i", marked_msh_path,
-        "-o", mesh_output_base,
-        "--dx", str(args.dx), "--dy", str(args.dy), "--dz", str(args.dz),
-        "--alpha_endo_lv", str(args.alpha_endo_lv), "--alpha_epi_lv", str(args.alpha_epi_lv),
-        "--beta_endo_lv", str(args.beta_endo_lv), "--beta_epi_lv", str(args.beta_epi_lv),
-        "--alpha_endo_sept", str(args.alpha_endo_sept), "--alpha_epi_sept", str(args.alpha_epi_sept),
-        "--beta_endo_sept", str(args.beta_endo_sept), "--beta_epi_sept", str(args.beta_epi_sept),
-        "--alpha_endo_rv", str(args.alpha_endo_rv), "--alpha_epi_rv", str(args.alpha_epi_rv),
-        "--beta_endo_rv", str(args.beta_endo_rv), "--beta_epi_rv", str(args.beta_epi_rv)
-    ]
+    try:
+        msh2alg_command = (
+            f"PYTHONPATH=. python3 ./src/msh2alg/msh2alg.py "
+            f"-i {marked_msh_path} "
+            f"-o {mesh_output_base} "
+            f"--dx {args.dx} --dy {args.dy} --dz {args.dz} "
+            f"--alpha_endo_lv {args.alpha_endo_lv} --alpha_epi_lv {args.alpha_epi_lv} "
+            f"--beta_endo_lv {args.beta_endo_lv} --beta_epi_lv {args.beta_epi_lv} "
+            f"--alpha_endo_sept {args.alpha_endo_sept} --alpha_epi_sept {args.alpha_epi_sept} "
+            f"--beta_endo_sept {args.beta_endo_sept} --beta_epi_sept {args.beta_epi_sept} "
+            f"--alpha_endo_rv {args.alpha_endo_rv} --alpha_epi_rv {args.alpha_epi_rv} "
+            f"--beta_endo_rv {args.beta_endo_rv} --beta_epi_rv {args.beta_epi_rv}"
+        )
 
-    # Executa com conda run
-    subprocess.run(command, check=True)
+        subprocess.run(msh2alg_command, shell=True, check=True)
+        print("===================================================")
+        print("Mesh successfully converted to ALG format.")
+        print("===================================================")
+
+    except subprocess.CalledProcessError as e:
+        print(f"Error converting msh to alg: {e}")
+        return
 
     print("========================================================================================")
     print("Finished processing the patient data.")

@@ -50,7 +50,7 @@ def run_msh2alg(
         '-r', '1000',
         '-c', '../src/msh2alg/conf.ini',
         '-o', f"../{meshname}.alg"
-    ], cwd='./hexa-mesh-from-VTK/')
+    ], cwd='./hexa-mesh-from-VTK_vtk9/')
 
 
 if __name__ == "__main__":
