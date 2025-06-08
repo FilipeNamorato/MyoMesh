@@ -1,20 +1,65 @@
 # MyoMesh
+
+## Overview
+**MyoMesh** is a pipeline for generating patient-specific heart meshes and converting them to a format suitable for electrophysiological simulations.
+
+It integrates mesh processing, fiber assignment (via LDRB algorithm), and scar marking, producing final `.alg` files ready for use in simulators.
+
+---
+
 ## Pre-Requisites
-- FEniCS 2019.1.0.
-- Gmsh
-- LDRB (conda)
+
+You do not need to install the individual libraries manually — the required dependencies are all included in the provided Conda environment.
+
+**Dependencies included:**
+- FEniCS 2019.1.0
+- LDRB (via Conda)
 - meshio
-- h5py 
-- Scipy
+- h5py
+- scipy
 - CMake
-- VTK (libvtk7-dev)
-- [hexa-mesh-from-VTK](https://github.com/rsachetto/hexa-mesh-from-VTK.git): This repository is necessary for the generation of hexahedral meshes from VTK files. It will be cloned during the Configuration.
-  
+- VTK 9.4.x (via Conda)
+- Gmsh (already included in project scripts)
+- Other Python & C++ utilities (handled in the environment)
+
+**Additional repository required:**  
+- [hexa-mesh-from-VTK_vtk9](https://github.com/FilipeNamorato/hexa-mesh-from-VTK_vtk9) — This will be cloned automatically during the configuration.
+
+---
+
+## Installation
+
+1. Clone this repository:
+   ```sh
+   git clone https://github.com/FilipeNamorato/MyoMesh.git
+   cd MyoMesh
+   ```
+
+2. Create the Conda environment from the provided `.yml`:
+   ```sh
+   conda env create -f environment_clean.yml
+   ```
+
+3. Activate the environment:
+   ```sh
+   conda activate myomesh
+   ```
+
+---
 
 ## Configuration
-  ```sh
-    bash config.sh
-  ```
+
+After activating the environment, run:
+
+```sh
+bash config.sh
+```
+
+This will:
+- Clone and build the `hexa-mesh-from-VTK` project.
+- Build the `convertPly2STL` executable used by the pipeline.
+
+---
 
 ## Description parameters
 - `-i`: Path to the file with heart meshes.
@@ -33,18 +78,38 @@
 - `--beta_endo_rv`: Sheet angle on the right ventricle (RV) endocardium. Default value is 0°.
 - `--beta_epi_rv`: Sheet angle on the right ventricle (RV) epicardium. Default value is 0°.
 
-## Running
-```sh
-conda activate fenicsproject
-```
-```sh
-python3 -i path_mesh -o output_file_name -dx dx -dy dy -dz dz
-```
-## Running example
-```sh
-python3 main.py -i ./patient1.msh -o output -dx 0.5 -dy 0.5 -dz 0.5
-``` 
+## Running the Pipeline
 
-``` sh
-python3 main.py -i ./patient1.msh -o output -dx 0.5 -dy 0.5 -dz 0.5 --alpha_endo_lv 30 --alpha_epi_lv -30 --beta_endo_lv 0 --beta_epi_lv 0 --alpha_endo_sept 60 --alpha_epi_sept -60 --beta_endo_sept 0 --beta_epi_sept 0 --alpha_endo_rv 80 --alpha_epi_rv -80 --beta_endo_rv 0 --beta_epi_rv 0
-``` 
+1. Activate the environment:
+   ```sh
+   conda activate myomesh
+   ```
+
+2. Run the main pipeline:
+   ```sh
+   python3 execAll.py -i path_to_patient_mat_file.mat
+   ```
+
+---
+
+## Running Example
+
+Basic run:
+```sh
+python3 execAll.py -i ./example_patient.mat
+```
+
+Full run with explicit parameters:
+```sh
+python3 execAll.py -i ./example_patient.mat -dx 0.5 -dy 0.5 -dz 0.5 --alpha_endo_lv 30 --alpha_epi_lv -30 --beta_endo_lv 0 --beta_epi_lv 0 --alpha_endo_sept 60 --alpha_epi_sept -60 --beta_endo_sept 0 --beta_epi_sept 0 --alpha_endo_rv 80 --alpha_epi_rv -80 --beta_endo_rv 0 --beta_epi_rv 0
+```
+
+---
+
+## Notes
+
+- The environment is fully self-contained.
+- No additional system packages are required if you install via the provided Conda environment.
+- Gmsh binary is already included and used by the pipeline.
+- The `hexa-mesh-from-VTK` project will be cloned and compiled automatically during `config.sh`.
+```
