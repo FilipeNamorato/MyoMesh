@@ -2,9 +2,36 @@
 #set -x
 
 dir="MyoMesh"
+env_name="myomesh"
+yml_file="myomesh.yml"
 
 if [ $(basename "$PWD") = "$dir" ]; then
 
+    # Passo extra: criar o ambiente Conda se não existir
+    if command -v conda &> /dev/null; then
+        echo "==================================================="
+        echo "Checking if Conda environment '$env_name' exists..."
+        echo "==================================================="
+
+        # Verifica se o env já existe
+        if conda env list | grep -q "$env_name"; then
+            echo "Conda environment '$env_name' already exists. Skipping creation."
+        else
+            echo "Creating Conda environment '$env_name' from $yml_file..."
+            conda env create -f $yml_file -n $env_name
+            if [ $? -eq 0 ]; then
+                echo "Conda environment '$env_name' created successfully."
+            else
+                echo "Failed to create Conda environment '$env_name'."
+                exit 1
+            fi
+        fi
+    else
+        echo "Conda is not installed or not in PATH. Unable to create Conda environment."
+        exit 1
+    fi
+
+    # Parte de clonar e buildar projetos
     if command -v git &> /dev/null; then
         echo "==================================================="
         echo "Cloning hexa-mesh-from-VTK repository..."
