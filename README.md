@@ -96,12 +96,12 @@ This will:
 
 Basic run:
 ```sh
-python3 execAll.py -i ./example_patient.mat
+python3 execAll.py -i ./Patient_1.mat
 ```
 
 Full run with explicit parameters:
 ```sh
-python3 execAll.py -i ./example_patient.mat -dx 0.5 -dy 0.5 -dz 0.5 --alpha_endo_lv 30 --alpha_epi_lv -30 --beta_endo_lv 0 --beta_epi_lv 0 --alpha_endo_sept 60 --alpha_epi_sept -60 --beta_endo_sept 0 --beta_epi_sept 0 --alpha_endo_rv 80 --alpha_epi_rv -80 --beta_endo_rv 0 --beta_epi_rv 0
+python3 execAll.py -i ./Patient_1.mat -dx 0.5 -dy 0.5 -dz 0.5 --alpha_endo_lv 30 --alpha_epi_lv -30 --beta_endo_lv 0 --beta_epi_lv 0 --alpha_endo_sept 60 --alpha_epi_sept -60 --beta_endo_sept 0 --beta_epi_sept 0 --alpha_endo_rv 80 --alpha_epi_rv -80 --beta_endo_rv 0 --beta_epi_rv 0
 ```
 
 ---
