@@ -338,7 +338,7 @@ dependencies:
   - scipy=1.15.2
   - sdl2=2.32.54
   - sdl3=3.2.12
-  - setuptools=80.9.0
+  - setuptools<81
   - six=1.17.0
   - slepc=3.23.0
   - slepc4py=3.23.0

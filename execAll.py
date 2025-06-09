@@ -248,13 +248,15 @@ def execute_commands(input_file):
     print("Finished processing the patient data.")
     print("========================================================================================")
     # Clean up intermediate files
-    os.remove("./aligned_patient.mat")
-    os.remove("./endo_shifts_x.txt")
-    os.remove("./endo_shifts_y.txt")
-    os.remove("./epi_shifts_x.txt")
-    os.remove("./epi_shifts_y.txt")
+    os.remove(f"{output_dir}/endo_shifts_x.txt")
+    os.remove(f"{output_dir}/endo_shifts_y.txt")
+    os.remove(f"{output_dir}/epi_shifts_x.txt")
+    os.remove(f"{output_dir}/epi_shifts_y.txt")
+    shutil.rmtree(txt_srf, ignore_errors=True)
+    shutil.rmtree(stl_srf, ignore_errors=True)
+    shutil.rmtree(f"{output_dir}/scarPly", ignore_errors=True)
+    shutil.rmtree(f"{output_dir}/slices", ignore_errors=True)
 
-# Main entry point
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Execute pipeline for processing a .mat file.")
     parser.add_argument("-i", "--input_file", required=True, help="Full path to the input .mat file")
