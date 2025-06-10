@@ -31,6 +31,7 @@ def run_msh2alg(
     pathMesh,
     meshname,
     dx=0.5, dy=0.5, dz=0.5,
+    discretization=1000,
     alpha_endo_lv=30, alpha_epi_lv=-30, beta_endo_lv=0, beta_epi_lv=0,
     alpha_endo_sept=60, alpha_epi_sept=-60, beta_endo_sept=0, beta_epi_sept=0,
     alpha_endo_rv=80, alpha_epi_rv=-80, beta_endo_rv=0, beta_epi_rv=0
@@ -47,7 +48,7 @@ def run_msh2alg(
         './bin/HexaMeshFromVTK', '-t',
         '-i', f"../{meshname}.vtu",
         '--dx', str(dx), '--dy', str(dy), '--dz', str(dz),
-        '-r', '1000',
+        '-r', str(discretization),
         '-c', '../src/msh2alg/conf.ini',
         '-o', f"../{meshname}.alg"
     ], cwd='./hexa-mesh-from-VTK_vtk9/')
@@ -58,6 +59,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', type=str, default='', help='Path to .msh input file')
     parser.add_argument('-o', type=str, default='patient', help='Output base name (.vtu, .alg)')
+    parser.add_argument('-r', type=int, default=1000, help='Discretization resolution')
 
     parser.add_argument('--dx', type=float, default=0.5)
     parser.add_argument('--dy', type=float, default=0.5)
@@ -83,6 +85,7 @@ if __name__ == "__main__":
     run_msh2alg(
         pathMesh=args.i,
         meshname=args.o,
+        discretization=args.r,
         dx=args.dx, dy=args.dy, dz=args.dz,
         alpha_endo_lv=args.alpha_endo_lv, alpha_epi_lv=args.alpha_epi_lv,
         beta_endo_lv=args.beta_endo_lv, beta_epi_lv=args.beta_epi_lv,

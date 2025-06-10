@@ -219,13 +219,15 @@ def execute_commands(input_file):
     print("===================================================")
 
     marked_msh_path = f"{msh_srf}/{patient_id}_marked.msh"
-    mesh_output_base = f"{msh_srf}/{patient_id}"
+    mesh_output_base = f"{output_dir}/conversionFiles/{patient_id}"
+    os.makedirs(os.path.dirname(mesh_output_base), exist_ok=True)
 
     try:
         msh2alg_command = (
             f"PYTHONPATH=. python3 ./src/msh2alg/msh2alg.py "
             f"-i {marked_msh_path} "
             f"-o {mesh_output_base} "
+            f"-r {args.resolution} "              
             f"--dx {args.dx} --dy {args.dy} --dz {args.dz} "
             f"--alpha_endo_lv {args.alpha_endo_lv} --alpha_epi_lv {args.alpha_epi_lv} "
             f"--beta_endo_lv {args.beta_endo_lv} --beta_epi_lv {args.beta_epi_lv} "
@@ -245,7 +247,7 @@ def execute_commands(input_file):
         return
 
     print("========================================================================================")
-    print("Finished processing the patient data.")
+    print("                         Finished processing the patient data.")
     print("========================================================================================")
     # Clean up intermediate files
     os.remove(f"{output_dir}/endo_shifts_x.txt")
@@ -256,11 +258,14 @@ def execute_commands(input_file):
     shutil.rmtree(stl_srf, ignore_errors=True)
     shutil.rmtree(f"{output_dir}/scarPly", ignore_errors=True)
     shutil.rmtree(f"{output_dir}/slices", ignore_errors=True)
+    shutil.rmtree(f"{output_dir}/scarSTL", ignore_errors=True)
+    shutil.rmtree(f"{output_dir}/rois_extruded", ignore_errors=True)
+    shutil.rmtree(f"{output_dir}/plyFiles", ignore_errors=True)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Execute pipeline for processing a .mat file.")
     parser.add_argument("-i", "--input_file", required=True, help="Full path to the input .mat file")
-
+    parser.add_argument('-r', '--resolution', type=int, default=1000, help='Discretization resolution for the mesh')
 
     parser.add_argument('-dx', type=float, default=0.5, help='dx')
     parser.add_argument('-dy', type=float, default=0.5, help='dy')
